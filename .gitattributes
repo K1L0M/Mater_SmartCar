@@ -1,0 +1,7 @@
+# 统一换行符处理，避免不同平台 clone 后出现整文件差异
+* text=auto
+
+# 预编译静态库必须原样（二进制）保存，禁止换行符转换，否则链接会失败
+*.a   binary
+*.lib binary
+*.bin binary

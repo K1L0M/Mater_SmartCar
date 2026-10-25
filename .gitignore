@@ -1,0 +1,21 @@
+# ===== AURIX Development Studio / Eclipse 编译生成物（不入库）=====
+# 与《删除临时文件.bat》中清理的目录一致：Debug、.ads、*.launch
+/Debug/
+/Release/
+/.ads/
+/.metadata/
+*.launch
+
+# 编译中间文件与输出
+*.o
+*.d
+*.obj
+*.elf
+*.hex
+*.map
+*.abs
+
+# 系统临时文件
+Thumbs.db
+desktop.ini
+.DS_Store
