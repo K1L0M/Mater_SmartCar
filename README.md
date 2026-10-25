@@ -75,11 +75,12 @@ main            可比赛 / 可烧录的稳定代码，只从 develop 合并
 
 已有分支：`main`、`develop`、`feature/K1L0M`（维护者）。**另外两条由队友自己按 `feature/姓名` 创建**。
 
-## 5. 日常操作（维护者与队友完全一致）
+## 5. 三步走：个人分支 → develop → main
 
-### 5.1 第一次使用：克隆 + 建自己的分支
+> ① 在 `feature/姓名` 上开发 → ② 合并进 `develop` → ③ 比赛前把 `develop` 合并进 `main`。
+> 三条铁律：**develop 只走 PR、每次合并前先 `fetch` 再 `pull --ff-only`、main 只接受 develop 合并**。
 
-三个人做法相同，只有分支名不同：
+### 5.0 第一次使用：克隆并建自己的分支（三个人一样）
 
 ```bash
 git clone git@gitee.com:wisdel/Mater_SmartCar.git
@@ -92,54 +93,101 @@ git checkout -b feature/你的名字        # 例如 feature/张三
 git push -u origin feature/你的名字     # 第一次推送，建立跟踪关系
 ```
 
-> 只克隆 Gitee 即可，`origin` 自动指向 Gitee，`git pull`/`git push` 都走 Gitee，不需要再配置任何远端。
+> 只克隆 Gitee 即可，`origin` 自动指向 Gitee，`git pull`/`git push` 都走 Gitee。
 > 队友**不要**使用别人已有的 `feature/xxx` 分支。
 
-### 5.2 每次改代码（三个人一样）
+### 5.1 第一步：在个人分支上开发
 
 ```bash
-git pull --rebase        # 从 Gitee 拉取 develop 的最新改动（origin = Gitee）
+# 1) 开工前同步：把 develop 的最新内容合到自己的分支上
+git fetch --all --prune
+git checkout develop
+git pull --ff-only
+git checkout feature/你的名字
+git rebase develop
+
+# 2) 改代码，并在 ADS 里编译通过
+
+# 3) 提交并推送自己的分支
 git add -A
-git commit -m "改了什么"
-git push                 # 推到 Gitee 上自己的 feature 分支
+git commit -m "完成了什么功能"
+git push
 ```
 
-> 第一次推送后，之后直接 `git push` 即可，不用再写分支名。
+- 第 1 步里 `git pull --ff-only` **只要报错就停下来**：说明本地 develop 上有不该有的提交（`git branch -vv` 会显示 `ahead N`），先处理再继续。
+- `git push` 推的是你自己的 `feature/姓名` 分支，不影响 develop。
 
-### 5.3 把功能合并回 develop
+### 5.2 第二步：个人分支 → develop（Gitee 网页发 PR）
 
-在 Gitee 网页上，从 `feature/你的名字` 向 `develop` 发 **Pull Request**（推荐，能看见改动），或者本地合并：
+1. 打开 <https://gitee.com/wisdel/Mater_SmartCar/pulls>，点「新建 Pull Request」。
+2. 源分支选 `feature/你的名字`，目标分支选 `develop`。
+3. 确认「没有冲突」后点「合并」。
+4. 回到本地，把 develop 更新到最新：
 
 ```bash
 git checkout develop
-git pull --rebase
-git merge --no-ff feature/你的名字
-git push origin develop
+git pull --ff-only
 ```
 
-**合并前必须保证 ADS 里能编译通过**，`Debug/`、`.ads/` 之类的生成物不会被提交。
+- **提示有冲突**：回到 5.1 的 `git rebase develop` 解决冲突，`git push` 后 PR 会自动更新，再合并。
+- **不要执行 `git push origin develop`**：develop 的提交只在 Gitee 合并 PR 时产生，这样三个人的本地 develop 永远只能快进，不会再出现“本地 develop 落后/分叉”。
 
-### 5.4 发版到 main（维护者）
-
-比赛前把 develop 合成比赛版：
+### 5.3 第三步：develop → main（维护者，比赛前）
 
 ```bash
+# 1) 同步远端信息并检查本地状态
+git fetch --all --prune
+git branch -vv
+
+# 2) develop 拉到最新（--ff-only 必须成功）
+git checkout develop
+git pull --ff-only
+
+# 3) main 也拉到最新
 git checkout main
-git pull --rebase origin main
-git merge --no-ff develop
-git push origin main     # 推到 Gitee
-git push github main     # 推到 GitHub（只有 main）
+git pull --ff-only
+
+# 4) 合并：--no-ff 保证生成合并提交
+git merge --no-ff develop -m "合并 develop 到 main：比赛版"
+
+# 5) 推到两个远端
+git push origin main      # Gitee
+git push github main      # GitHub（只有 main）
+
+# 6) 核对三处哈希是否一致
+git rev-parse main
+git ls-remote origin refs/heads/main
+git ls-remote github refs/heads/main
 ```
 
-> GitHub 上只有 `main`，队友不需要也无法往 GitHub 推送；`github` 远端已配置为只推 `main`。
+成功的标志（缺一个就说明没成功）：
+
+- `git merge` 输出 `Merge made by the 'ort' strategy`（只有 `Already up to date` 说明合的是旧 develop）；
+- `git push` 输出带哈希范围的行，例如 `89ceb4b..b0a0f56  main -> main`；
+- 第 6 步三条哈希完全相同。
+
+### 5.4 合并前 30 秒自检
+
+```bash
+git fetch --all --prune
+git branch -vv
+```
+
+| 看到 | 含义 | 处理 |
+|---|---|---|
+| `develop ... [origin/develop: ahead N]` | 本地 develop 有不该有的提交 | `git reset --hard origin/develop` |
+| `develop ... [origin/develop: behind N]` | 本地 develop 落后 | 先 `git pull --ff-only` |
+| 既没有 ahead 也没有 behind | 本地与远端一致 | 可以合并 |
 
 ## 6. 注意事项
 
-1. **不要往 GitHub 推 develop/个人分支**：GitHub 只保留比赛版 `main`，日常改动一律在 Gitee。
-2. **不要直接在 main 上提交**：main 只接受来自 develop 的合并，否则比赛版会混进半成品。
-3. **两人同时推同一个分支**：后推的人会收到 `rejected (non-fast-forward)`，执行 `git pull --rebase` 再 `git push`；**不要用 `git push -f`**。
-4. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被 `.gitignore` 忽略，不要用 `git add -f` 强行加入；`zf_device_config.a` 是二进制静态库，别用文本编辑器打开保存。
-5. **每人用自己的账号和密钥**：`user.name`/`user.email`、Gitee SSH 公钥都要各自配置，不要共用。
+1. **develop 只走 PR**：不要 `git push origin develop`，也不要在本地 develop 上直接 commit，否则本地 develop 会和远端分叉。
+2. **main 只接受 develop 合并**：不在 main 上直接提交，否则比赛版会混进半成品。
+3. **合并前 `--ff-only` 必须成功**：报错就停，先按 5.4 处理，不要用 `git merge -X ours` 之类的技巧硬合。
+4. **冲突在自己的分支解决**：在 `feature/姓名` 上 `git rebase develop` 处理，**不要 `git push -f`**，会覆盖队友的提交。
+5. **不要往 GitHub 推 develop/个人分支**：GitHub 只保留比赛版 `main`，`github` 远端已固定只推 `main`。
+6. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被 `.gitignore` 忽略，不要用 `git add -f` 强行加入；`zf_device_config.a` 是二进制静态库，别用文本编辑器打开保存。
+7. **每人用自己的账号和密钥**：`user.name`/`user.email`、Gitee SSH 公钥都要各自配置，不要共用。
 
 ## 7. 参考
 
