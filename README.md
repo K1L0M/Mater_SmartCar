@@ -18,7 +18,6 @@ Mater_SmartCar
 │   └── doc/                             版本与许可证说明
 ├── 推荐IO分配.txt / 尽量不要使用的引脚.txt
 ├── 删除临时文件.bat                     清理 Debug、.ads、*.launch 等生成物
-├── 设置双远端推送.bat                   配置 GitHub + Gitee 双远端推送（队友首次使用执行一次）
 └── AURIX修改工程名称.bat                重命名工程用（一般无需执行）
 ```
 
@@ -38,80 +37,103 @@ Mater_SmartCar
 - `libraries/zf_device/zf_device_config.a` 是逐飞提供的预编译静态库，已在 `.gitattributes` 中标记为二进制，必须随仓库提交，否则链接失败。
 - 新增用户代码建议直接放在 `code/` 目录（不要建子目录），再在工程中引用。
 
-## 4. 多人协作与推送同步
+## 4. 两端分工与分支模型
 
-### 4.1 仓库有两个远端，内容必须一致
+### 4.1 两个远端的职责
 
-| 远端 | 地址 | 说明 |
-|---|---|---|
-| GitHub（主） | `https://github.com/K1L0M/Mater_SmartCar.git` | 主仓库、Issue/PR |
-| Gitee（镜像） | `git@gitee.com:wisdel/Mater_SmartCar.git` | 国内访问快，内容与 GitHub 保持一致 |
+| 远端 | 地址 | 放什么 | 用途 |
+|---|---|---|---|
+| **origin**（Gitee） | `git@gitee.com:wisdel/Mater_SmartCar.git` | **所有分支**：main、develop、feature/* | 日常拉取 + 推送（国内速度快） |
+| **github**（GitHub） | `https://github.com/K1L0M/Mater_SmartCar.git` | **只放 `main`** | 比赛版归档 / 对外展示 |
 
-维护者的本机 `origin` 配了**两个推送地址**，所以 `git push` 会依次推 GitHub 和 Gitee，`git pull` 只从 GitHub 拉。
+- 本机 `origin` 就是 **Gitee**，所以 `git pull`、`git push` 默认都走 Gitee。
+- GitHub 只接收 `main` 的推送，`github` 远端的推送范围已固定为 `main`，不会把 develop、个人分支带上去。
 
-> ⚠️ 这个双推配置只保存在各自电脑的 `.git/config` 里，**不会随仓库同步**。队友克隆后必须执行一次 `设置双远端推送.bat`，否则只会推到其中一个仓库，两边就会不一致。
+### 4.2 分支结构
 
-### 4.2 队友第一次使用（4 步）
-
-**① 先拿到推送权限**（没有权限会报 `403` 或 `You do not have permission to push`）
-
-- GitHub：仓库 `Settings → Collaborators → Add people`，邀请你的 GitHub 账号，去邮箱接受邀请
-- Gitee：仓库 `管理 → 仓库成员 → 邀请用户`，角色选「开发者」
-
-**② 克隆**（两个地址任选，国内网络建议用 Gitee）
-
-```bash
-git clone https://github.com/K1L0M/Mater_SmartCar.git
-# 或
-git clone git@gitee.com:wisdel/Mater_SmartCar.git
+```
+main            可比赛 / 可烧录的稳定代码，只从 develop 合并
+ └─ develop     日常集成分支，三个人的改动汇总到这里
+     ├─ feature/<姓名>   每个人自己的开发分支
+     ├─ feature/<姓名>
+     └─ feature/<姓名>
 ```
 
-**③ 配置双远端推送**（只需一次）
+| 分支 | 从哪分出 | 用途 | 推送到 |
+|---|---|---|---|
+| `main` | — | 比赛版、烧录版，**不直接在 main 上改代码** | Gitee + GitHub |
+| `develop` | main | 日常集成，合并三个人的功能 | Gitee |
+| `feature/<姓名>` | develop | 各自的开发分支，随便提交 | Gitee |
 
-在仓库根目录双击运行 `设置双远端推送.bat`，看到 `git remote -v` 里有两条 `(push)` 即成功。
+已有分支：`main`、`develop`、`feature/K1L0M`（维护者）。**另外两条由队友自己按 `feature/姓名` 创建**。
 
-**④ 配置自己的身份与认证**
+## 5. 日常操作（维护者与队友完全一致）
+
+### 5.1 第一次使用：克隆 + 建自己的分支
+
+三个人做法相同，只有分支名不同：
 
 ```bash
+git clone git@gitee.com:wisdel/Mater_SmartCar.git
+cd Mater_SmartCar
 git config user.name  "你的名字"
 git config user.email "你的邮箱"
+
+git checkout develop
+git checkout -b feature/你的名字        # 例如 feature/张三
+git push -u origin feature/你的名字     # 第一次推送，建立跟踪关系
 ```
 
-| 平台 | 认证方式 |
-|---|---|
-| Gitee（脚本默认 SSH） | `ssh-keygen -t ed25519 -C "你的邮箱"` 生成密钥，把 `~/.ssh/id_ed25519.pub` 内容贴到 Gitee → 设置 → **SSH 公钥** |
-| Gitee（改用 HTTPS） | 把脚本里的 `GITEE_URL` 换成 `https://gitee.com/wisdel/Mater_SmartCar.git`，首次推送输入 Gitee 用户名 + **私人令牌**（设置 → 私人令牌，不是登录密码） |
-| GitHub | HTTPS 用 Personal Access Token，或同样配置 SSH key |
+> 只克隆 Gitee 即可，`origin` 自动指向 Gitee，`git pull`/`git push` 都走 Gitee，不需要再配置任何远端。
+> 队友**不要**使用别人已有的 `feature/xxx` 分支。
 
-> ⚠️ 每个人用自己的账号和密钥，**不要共用别人的私钥**；`user.name/user.email` 也要改成自己的，否则提交记录全挂在同一个人名下。
-
-### 4.3 日常推送流程
+### 5.2 每次改代码（三个人一样）
 
 ```bash
-git pull --rebase          # 先拉取队友的提交（有本地改动时先 commit 或 stash）
+git pull --rebase        # 从 Gitee 拉取 develop 的最新改动（origin = Gitee）
 git add -A
 git commit -m "改了什么"
-git push                   # 一条命令同时推 GitHub + Gitee
+git push                 # 推到 Gitee 上自己的 feature 分支
 ```
 
-推送后核对两边是否一致（两个哈希应完全相同）：
+> 第一次推送后，之后直接 `git push` 即可，不用再写分支名。
+
+### 5.3 把功能合并回 develop
+
+在 Gitee 网页上，从 `feature/你的名字` 向 `develop` 发 **Pull Request**（推荐，能看见改动），或者本地合并：
 
 ```bash
-git ls-remote origin master
-git ls-remote git@gitee.com:wisdel/Mater_SmartCar.git master
+git checkout develop
+git pull --rebase
+git merge --no-ff feature/你的名字
+git push origin develop
 ```
 
-### 4.4 必须知道的 4 件事
+**合并前必须保证 ADS 里能编译通过**，`Debug/`、`.ads/` 之类的生成物不会被提交。
 
-1. **双推不是原子操作**：GitHub 成功、Gitee 失败（断网/没权限）时，两边就会不一致。`git push` 报错后先按 4.3 的两条 `ls-remote` 核对，缺哪边就补推：
-   ```bash
-   git push git@gitee.com:wisdel/Mater_SmartCar.git master
-   ```
-2. **不要只推一边**：除非是在补推失败的那一侧，平时一律用不带参数的 `git push`。
-3. **两人同时推送**：后推的人会收到 `! [rejected] non-fast-forward`，执行 `git pull --rebase` 后再 `git push` 即可；**不要用 `git push -f`**，会覆盖队友的提交。
-4. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被 `.gitignore` 忽略，不要用 `git add -f` 强行加入；`zf_device_config.a` 是二进制静态库，别用文本编辑器打开保存，否则链接会失败。
+### 5.4 发版到 main（维护者）
 
-## 5. 参考
+比赛前把 develop 合成比赛版：
+
+```bash
+git checkout main
+git pull --rebase origin main
+git merge --no-ff develop
+git push origin main     # 推到 Gitee
+git push github main     # 推到 GitHub（只有 main）
+```
+
+> GitHub 上只有 `main`，队友不需要也无法往 GitHub 推送；`github` 远端已配置为只推 `main`。
+
+## 6. 注意事项
+
+1. **不要往 GitHub 推 develop/个人分支**：GitHub 只保留比赛版 `main`，日常改动一律在 Gitee。
+2. **不要直接在 main 上提交**：main 只接受来自 develop 的合并，否则比赛版会混进半成品。
+3. **两人同时推同一个分支**：后推的人会收到 `rejected (non-fast-forward)`，执行 `git pull --rebase` 再 `git push`；**不要用 `git push -f`**。
+4. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被 `.gitignore` 忽略，不要用 `git add -f` 强行加入；`zf_device_config.a` 是二进制静态库，别用文本编辑器打开保存。
+5. **每人用自己的账号和密钥**：`user.name`/`user.email`、Gitee SSH 公钥都要各自配置，不要共用。
+
+## 7. 参考
 
 - 逐飞 TC264 开源库：<https://gitee.com/seekfree/TC264_Library>
 - 逐飞科技：<https://seekfree.taobao.com/>
