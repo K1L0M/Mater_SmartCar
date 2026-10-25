@@ -10,6 +10,10 @@
                 "${workspaceFolder}",
                 "${workspaceFolder}/code/**",
                 "${workspaceFolder}/user/**",
+                "${workspaceFolder}/libraries/zf_common",
+                "${workspaceFolder}/libraries/zf_driver",
+                "${workspaceFolder}/libraries/zf_device",
+                "${workspaceFolder}/libraries/zf_components",
                 "${workspaceFolder}/libraries/**",
                 "${TASKING_CTC}/include"
             ],
@@ -41,7 +45,8 @@
                     "${workspaceFolder}/libraries",
                     "${TASKING_CTC}/include"
                 ],
-                "limitSymbolsToIncludedHeaders": true
+                "limitSymbolsToIncludedHeaders": false,
+                "databaseFilename": "smartcar-browse.vc.db"
             }
         }
     ],

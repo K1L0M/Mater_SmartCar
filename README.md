@@ -54,8 +54,8 @@ Mater_SmartCar
 | **origin**（Gitee） | `git@gitee.com:wisdel/Mater_SmartCar.git` | **所有分支**：main、develop、feature/* | 日常拉取 + 推送（国内速度快） |
 | **github**（GitHub） | `https://github.com/K1L0M/Mater_SmartCar.git` | **只放 `main`** | 比赛版归档 / 对外展示 |
 
-- 本机 `origin` 就是 **Gitee**，所以 `git pull`、`git push` 默认都走 Gitee。
-- GitHub 只接收 `main` 的推送，`github` 远端的推送范围已固定为 `main`，不会把 develop、个人分支带上去。
+- `origin` 是 **Gitee**。下面的命令显式指定远端和分支，不依赖各人机器上的默认推送设置。
+- GitHub 约定只推送 `main`。远端地址和 `remote.github.push` 是本机配置，不会随克隆复制；维护者按 5.3 配置，且始终显式推送 `main`。
 
 ### 4.2 分支结构
 
@@ -77,117 +77,152 @@ main            可比赛 / 可烧录的稳定代码，只从 develop 合并
 
 ## 5. 三步走：个人分支 → develop → main
 
-> ① 在 `feature/姓名` 上开发 → ② 合并进 `develop` → ③ 比赛前把 `develop` 合并进 `main`。
-> 三条铁律：**develop 只走 PR、每次合并前先 `fetch` 再 `pull --ff-only`、main 只接受 develop 合并**。
+> ① 个人分支开发并推送 → ② Gitee 合并 PR，再同步回个人分支 → ③ 维护者发布 main，结束后自动返回个人分支。
+> 日常 develop 通过 PR 集成；共享过的个人分支使用 merge 同步，不重写历史、不强推。维护者经明确授权的直接推送属于例外，仍须先 fetch 并使用普通快进推送。
 
-### 5.0 第一次使用：克隆并建自己的分支（三个人一样）
+**以下命令在仓库根目录的 PowerShell 中执行。** 手动命令逐条执行，任何失败都先处理，不能跳过错误继续粘贴后续步骤。`scripts/git-workflow.ps1` 会检查每条 Git 命令的退出码，失败即停止。
 
-```bash
+脚本必须从自己的 `feature/<姓名>` 分支启动。运行前先提交需要保留的修改，或自行 `git stash push -u`（之后需要自己 `git stash pop` 并处理可能的冲突）；脚本不自动暂存、提交或 stash。存在未跟踪文件、未完成的合并/rebase 等操作时会拒绝运行。
+
+### 5.0 第一次使用：克隆并建立个人分支
+
+```powershell
 git clone git@gitee.com:wisdel/Mater_SmartCar.git
 cd Mater_SmartCar
-git config user.name  "你的名字"
+git config user.name "你的名字"
 git config user.email "你的邮箱"
+git fetch --prune origin
 
-git checkout develop
-git checkout -b feature/你的名字        # 例如 feature/张三
-git push -u origin feature/你的名字     # 第一次推送，建立跟踪关系
+# 仅用于第一次创建新分支；把“你的名字”替换为自己的名字
+git switch -c feature/你的名字 origin/develop
+git push -u origin HEAD:refs/heads/feature/你的名字
 ```
 
-> 只克隆 Gitee 即可，`origin` 自动指向 Gitee，`git pull`/`git push` 都走 Gitee。
-> 队友**不要**使用别人已有的 `feature/xxx` 分支。
+如果自己的远端分支已经存在，**不要重新创建同名分支或覆盖它**：本地没有该分支时执行 `git switch --track -c feature/你的名字 origin/feature/你的名字`；本地已有时执行 `git switch feature/你的名字`。已有分支完成切换后执行 5.1 的 `Sync`。
 
-### 5.1 第一步：在个人分支上开发
+此时停留在个人分支。每个人只使用自己的 `feature/*`，不要使用队友的分支。
 
-```bash
-# 1) 开工前同步：把 develop 的最新内容合到自己的分支上
-git fetch --all --prune
-git checkout develop
-git pull --ff-only
-git checkout feature/你的名字
-git rebase develop
+### 5.1 第一步：同步、开发、推送个人分支
 
-# 2) 改代码，并在 ADS 里编译通过
+```powershell
+# 1) 开工前同步；结束后仍在当前个人分支
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\git-workflow.ps1 -Action Sync
 
-# 3) 提交并推送自己的分支
-git add -A
+# 2) 修改代码，在 ADS 中编译通过，再检查实际改动
+git status
+git diff
+
+# 3) 只暂存本次要提交的文件；下面路径按实际修改替换
+git add -- code/你的文件.c code/你的文件.h
+git diff --cached
 git commit -m "完成了什么功能"
-git push
+
+# 4) 重新获取远端、合入远端个人分支及 develop，再推送当前个人分支
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\git-workflow.ps1 -Action Push
 ```
 
-- 第 1 步里 `git pull --ff-only` **只要报错就停下来**：说明本地 develop 上有不该有的提交（`git branch -vv` 会显示 `ahead N`），先处理再继续。
-- `git push` 推的是你自己的 `feature/姓名` 分支，不影响 develop。
+- `Sync` / `Push` 将本地 `develop` 安全快进到本次获取的 `origin/develop`，并把远端个人分支和 develop 的变化合入当前个人分支；**不会切到 develop 开发**。`Sync` 不推送，`Push` 只推送当前个人分支。
+- 同步发生代码变化后要重新编译/测试，PR 合并前必须确认集成后的代码通过；Git 合并成功不代表固件编译或功能测试通过。
+- `git push` 只上传提交，**不会等待 PR、不会自动拉取别人后续的改动，也不会让带有未合并提交的个人分支与 develop 完全相同**。此时保留个人提交才是正确行为。
+- 脚本遇到合并冲突会中止它刚发起的合并，并报告失败；按 5.4 手动解决后重试。不会留下一个未提示的冲突状态让后续命令接着运行。
 
-### 5.2 第二步：个人分支 → develop（Gitee 网页发 PR）
+### 5.2 第二步：个人分支 → develop，合并后同步收尾
 
-1. 打开 <https://gitee.com/wisdel/Mater_SmartCar/pulls>，点「新建 Pull Request」。
-2. 源分支选 `feature/你的名字`，目标分支选 `develop`。
-3. 确认「没有冲突」后点「合并」。
-4. 回到本地，把 develop 更新到最新：
+1. 在 Gitee 的本仓库「Pull Requests」页面新建 PR，源分支为自己的 `feature/姓名`，目标为 `develop`。
+2. 审查修改并完成编译/测试；有冲突时按 5.4 处理并重新推送。
+3. 选择**保留源提交历史的普通合并（Merge）或快进合并**，不要选择 Squash/Rebase 合并；长期使用的个人分支不要勾选合并后删除源分支。
+4. **等网页显示 PR 已合并后**，回到本地执行：
 
-```bash
-git checkout develop
-git pull --ff-only
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\git-workflow.ps1 -Action AfterMerge
 ```
 
-- **提示有冲突**：回到 5.1 的 `git rebase develop` 解决冲突，`git push` 后 PR 会自动更新，再合并。
-- **不要执行 `git push origin develop`**：develop 的提交只在 Gitee 合并 PR 时产生，这样三个人的本地 develop 永远只能快进，不会再出现“本地 develop 落后/分叉”。
+`AfterMerge` 会获取 Gitee 最新状态，确认本地和远端个人分支的所有提交都已经进入 develop，然后快进本地 `develop` 和当前个人分支、普通推送个人分支，最后核对提交哈希。成功后满足：
+
+```text
+当前分支 = feature/自己的名字
+本地个人分支 = Gitee 个人分支 = 本地 develop = 本次核验的 Gitee develop
+工作区干净，可以直接开始下一轮开发
+```
+
+**不需要再手动签回个人分支。** 如果在 PR 合并后又写了新提交、PR 尚未合并、采用了 Squash/Rebase，或者远端在核验期间继续变化，脚本会明确报错，不会用 `reset --hard` / 强推丢弃提交。先处理提示；有新功能时先保留提交、另开 PR，全部合入后再执行 `AfterMerge`。相同文件内容不一定代表相同提交历史。
 
 ### 5.3 第三步：develop → main（维护者，比赛前）
 
-```bash
-# 1) 同步远端信息并检查本地状态
-git fetch --all --prune
-git branch -vv
+维护者首次在本机配置 GitHub（`git remote -v` 中没有 `github` 时才执行 `remote add`；地址错误用 `git remote set-url` 修正）：
 
-# 2) develop 拉到最新（--ff-only 必须成功）
-git checkout develop
-git pull --ff-only
-
-# 3) main 也拉到最新
-git checkout main
-git pull --ff-only
-
-# 4) 合并：--no-ff 保证生成合并提交
-git merge --no-ff develop -m "合并 develop 到 main：比赛版"
-
-# 5) 推到两个远端
-git push origin main      # Gitee
-git push github main      # GitHub（只有 main）
-
-# 6) 核对三处哈希是否一致
-git rev-parse main
-git ls-remote origin refs/heads/main
-git ls-remote github refs/heads/main
+```powershell
+git remote -v
+git remote add github https://github.com/K1L0M/Mater_SmartCar.git
+git config remote.github.push refs/heads/main:refs/heads/main
 ```
 
-成功的标志（缺一个就说明没成功）：
+确认准备发布的 develop 已编译、测试通过，且自己停留在干净的个人分支上，再执行：
 
-- `git merge` 输出 `Merge made by the 'ort' strategy`（只有 `Already up to date` 说明合的是旧 develop）；
-- `git push` 输出带哈希范围的行，例如 `89ceb4b..b0a0f56  main -> main`；
-- 第 6 步三条哈希完全相同。
-
-### 5.4 合并前 30 秒自检
-
-```bash
-git fetch --all --prune
-git branch -vv
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\git-workflow.ps1 -Action Publish -ReleaseMessage "合并 develop 到 main：比赛版"
 ```
 
-| 看到 | 含义 | 处理 |
+脚本获取 origin 和 GitHub main，更新本地 develop、快进本地 main，然后以 `--no-ff` 合并本次获取的 develop，普通推送 main 到两个远端，核对两处 main 哈希，并在成功或失败时尝试**返回启动时的个人分支**。如果返回失败，会明确报错并要求检查 `git status`；不要在 main 上继续开发。
+
+- 两个远端不能作为一个 Git 原子事务推送：若 Gitee 成功、GitHub 失败，会报告失败并保留已成功的推送。修复权限/网络后重跑 `Publish`，不要 reset 或强推；若远端有独有提交，先人工核对。
+- `Already up to date`、`Everything up-to-date` **都可能是正常成功**，例如重复发布。成功依据是退出码、目标提交的包含关系及远端哈希核验，不是输出必须出现新合并或哈希范围。
+- `Publish` 不会把 main 的发布合并提交反向合入 develop/个人分支，也不会把 develop/个人分支推到 GitHub；若需要对齐个人分支与 develop，按 5.2 执行 `AfterMerge`。
+
+### 5.4 故障处理与自检
+
+```powershell
+git status
+git branch --show-current
+git fetch --prune origin
+git branch -vv
+git rev-list --left-right --count develop...origin/develop
+```
+
+最后两个数字分别为本地 develop 独有提交数、远端 develop 独有提交数：
+
+| 结果 | 含义 | 处理 |
 |---|---|---|
-| `develop ... [origin/develop: ahead N]` | 本地 develop 有不该有的提交 | `git reset --hard origin/develop` |
-| `develop ... [origin/develop: behind N]` | 本地 develop 落后 | 先 `git pull --ff-only` |
-| 既没有 ahead 也没有 behind | 本地与远端一致 | 可以合并 |
+| `0 0` | 本地 develop 与本次 fetch 的远端一致 | 可以继续 |
+| `0 N` | 本地 develop 落后 | 在个人分支运行 `Sync` / `AfterMerge` 安全快进 |
+| `N 0` 或 `N M` | 本地 develop 有远端没有的提交 | 停止，先 `git branch backup/develop-before-repair develop` 备份（名称已存在则换新名称），核对提交并通过个人分支/PR 集成；不要直接硬重置 |
+
+`git pull --ff-only` 成功**不能证明本地与远端完全相同**：本地仅领先时也可能成功并保持领先；失败还可能是网络、认证或跟踪配置问题，不能都解释成分叉。精确一致以哈希或 `rev-list` 的 `0 0` 为准。
+
+个人分支发生冲突时，在自己的分支手动处理（每次只合并一个目标，解决完成后再进行下一个）：
+
+```powershell
+git branch --show-current        # 确认是自己的 feature/*
+git fetch --prune origin
+git merge --no-edit --no-autostash origin/feature/你的名字
+# 若有冲突：编辑冲突文件，git add -- 实际解决的文件，再 git commit --no-edit
+# 不继续本次合并则执行 git merge --abort；不能带着冲突运行下一条 merge
+git merge --no-edit --no-autostash origin/develop
+# 若有冲突，同样解决并提交；随后在 ADS 重新编译/测试
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\git-workflow.ps1 -Action Push
+```
+
+若推送被拒绝（远端在操作期间新增提交），重新执行 `Push` 合并更新后正常推送；遇到受保护分支/权限错误按平台权限处理，不能强推绕过。已有 rebase/cherry-pick 等未完成操作时，先按 `git status` 提示完成或中止该操作。
+
+### 5.5 流程脚本的离线验证
+
+安装 Python 3、Git 和 PowerShell 后，可在仓库根目录运行：
+
+```powershell
+python scripts/tests/test_git_workflow.py
+```
+
+测试在临时目录创建本地裸仓库模拟两个远端，覆盖同步、合并后四处分支一致、冲突中止、未合并提交保护、发布失败重试和自动返回个人分支；不会连接或修改真实 Gitee/GitHub。
 
 ## 6. 注意事项
 
-1. **develop 只走 PR**：不要 `git push origin develop`，也不要在本地 develop 上直接 commit，否则本地 develop 会和远端分叉。
-2. **main 只接受 develop 合并**：不在 main 上直接提交，否则比赛版会混进半成品。
-3. **合并前 `--ff-only` 必须成功**：报错就停，先按 5.4 处理，不要用 `git merge -X ours` 之类的技巧硬合。
-4. **冲突在自己的分支解决**：在 `feature/姓名` 上 `git rebase develop` 处理，**不要 `git push -f`**，会覆盖队友的提交。
-5. **不要往 GitHub 推 develop/个人分支**：GitHub 只保留比赛版 `main`，`github` 远端已固定只推 `main`。
-6. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被 `.gitignore` 忽略，不要用 `git add -f` 强行加入；`zf_device_config.a` 是二进制静态库，别用文本编辑器打开保存。
-7. **每人用自己的账号和密钥**：`user.name`/`user.email`、Gitee SSH 公钥都要各自配置，不要共用。
+1. **日常 develop 走 PR**，不直接在 develop 上开发；维护者经明确授权的直接推送也不能覆盖别人的历史。
+2. **main 只接受 develop 合并**；发布流程结束要确认回到个人分支。
+3. **先保存修改再同步**；脚本不会隐式 stash、自动 add 全部文件或生成业务提交。
+4. **已推送个人分支使用 merge**；不依赖 rebase 后强推，不执行 `git push -f` 或未经检查的 `reset --hard`。
+5. **合并后运行 `AfterMerge` 才完成本地同步闭环**；以后远端有新提交仍须再次同步，不存在永久自动一致。
+6. **生成物不入库**：`Debug/`、`.ads/`、`*.launch` 已被忽略；`zf_device_config.a` 是二进制静态库，不能用文本编辑器修改。
+7. **每人用自己的账号和密钥**；Git 身份、SSH 公钥、远端/推送配置均需在自己的机器配置。
 
 ## 7. 参考
 
