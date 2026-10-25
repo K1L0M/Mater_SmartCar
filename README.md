@@ -31,11 +31,19 @@ Mater_SmartCar
 
 > 工程内所有头文件路径均为 `${workspace_loc:/${ProjName}/...}` 形式的相对路径，不含任何本机绝对路径，因此换电脑克隆后可直接编译。
 
+## 2.1 VS Code 头文件与 IntelliSense
+
+- 用 VS Code 打开仓库根目录，选择 `AURIX TC264 (TASKING)` 配置。`.vscode/c_cpp_properties.json` 已包含 `code/**`、`user/**`、`libraries/**` 和 TASKING 标准库路径，`math.h`、`stdio.h` 等来自实际工具链。
+- `env.TASKING_CTC` 默认指向本机 `D:/Infineon/AURIX-Studio-1.10.10/tools/Compilers/Tasking_1.1r8/ctc`。换电脑或升级 ADS 后，只需把这一项改成自己的 `ctc` 目录（其下应存在 `include/math.h`）。
+- `compilerPath` 显式留空，避免扩展自动选择 Windows 桌面编译器；TASKING 的头文件路径和必要宏手动指定，语言标准与当前 Debug 构建的 C99 / C++14 一致。32 位 Clang IntelliSense 模式仅供编辑辅助，不是 TriCore 编译器；TASKING 专用语法仍以 ADS 的编译结果为准。
+- 新增 `.c/.h` 可直接放入 `code/`；ADS 的 Debug 配置已加入该目录的头文件搜索路径。添加文件后在 ADS 刷新工程（F5）再构建，让生成的 Makefile 收录新源文件。若使用子目录，头文件建议按 `#include "模块/文件.h"`（相对于 `code/`）引用，或在 ADS 中显式添加相应目录；VS Code 的 `**` 递归搜索不会自动改变 ADS 编译选项。
+- 如果仍显示旧的 1696 提示，执行 `C/C++: Reset IntelliSense Database`，然后执行 `Developer: Reload Window`。实际构建继续使用 ADS。
+
 ## 3. 版本管理说明
 
 - `Debug/`、`Release/`、`.ads/`、`*.launch`、`.metadata/` 属于编译/调试生成物，已在 `.gitignore` 中忽略（与《删除临时文件.bat》清理的内容一致），**克隆后首次编译会自动重新生成**。
 - `libraries/zf_device/zf_device_config.a` 是逐飞提供的预编译静态库，已在 `.gitattributes` 中标记为二进制，必须随仓库提交，否则链接失败。
-- 新增用户代码建议直接放在 `code/` 目录（不要建子目录），再在工程中引用。
+- 新增用户代码建议直接放在 `code/` 目录，再在工程中引用；使用子目录时按第 2.1 节配置包含路径。
 
 ## 4. 两端分工与分支模型
 

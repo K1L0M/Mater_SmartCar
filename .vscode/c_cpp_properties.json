@@ -1,0 +1,49 @@
+{
+    "env": {
+        "TASKING_CTC": "D:/Infineon/AURIX-Studio-1.10.10/tools/Compilers/Tasking_1.1r8/ctc"
+    },
+    "configurations": [
+        {
+            "name": "AURIX TC264 (TASKING)",
+            "compilerPath": "",
+            "includePath": [
+                "${workspaceFolder}",
+                "${workspaceFolder}/code/**",
+                "${workspaceFolder}/user/**",
+                "${workspaceFolder}/libraries/**",
+                "${TASKING_CTC}/include"
+            ],
+            "defines": [
+                "__TASKING__=1",
+                "__CTC__=1",
+                "__CPU__=tc26xb",
+                "__CHAR_BIT__=8",
+                "__SHORT_BIT__=16",
+                "__INT_BIT__=32",
+                "__LONG_BIT__=32",
+                "__LLONG_BIT__=64",
+                "__INTPTR_BIT__=32",
+                "__PTRDIFF_BIT__=32",
+                "__SIZE_BIT__=32",
+                "__WCHAR_BIT__=16",
+                "__size_t=unsigned int",
+                "__ssize_t=int",
+                "__ptrdiff_t=int",
+                "__wchar_t=short"
+            ],
+            "cStandard": "c99",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "windows-clang-x86",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/code",
+                    "${workspaceFolder}/user",
+                    "${workspaceFolder}/libraries",
+                    "${TASKING_CTC}/include"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
